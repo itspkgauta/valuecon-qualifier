@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>.autocomplete {
+    /*the container must be positioned relative:*/
+    position: relative;
+    display: inline-block;
+  }
+  input {
+    border: 1px solid transparent;
+    background-color: #f1f1f1;
+    padding: 10px;
+    font-size: 16px;
+  }
+  input[type=text] {
+    background-color: #f1f1f1;
+    width: 100%;
+  }
+  input[type=submit] {
+    background-color: DodgerBlue;
+    color: #fff;
+  }
+  .autocomplete-items {
+    position: absolute;
+    border: 1px solid #d4d4d4;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    /*position the autocomplete items to be the same width as the container:*/
+    top: 100%;
+    left: 0;
+    right: 0;
+  }
+  .autocomplete-items div {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+  }
+  .autocomplete-items div:hover {
+    /*when hovering an item:*/
+    background-color: #e9e9e9;
+  }
+  .autocomplete-active {
+    /*when navigating through the items using the arrow keys:*/
+    background-color: DodgerBlue !important;
+    color: #ffffff;
+  }</style>
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="jumbotron" style="background-color: #0d5aa7">
+  <div class="container" style="margin-bottom: 50px">
+    <form autocomplete="off">
+      <div class="autocomplete" style="width:300px;">
+        <input id="cname" type="text" name="countryname" placeholder="Enter country name">
+      </div>
+    </form>
+  </div>
+  <div id="main_div"></div>
+  <!--  <div class="container" style="background-color: #e7f0f7">-->
+  <!--    <div>-->
+  <!--      <label for="capital">Capital</label>-->
+  <!--      <input value="ESU" id="capital" disabled>-->
+  <!--    </div>-->
+  <!--  </div>-->
+</div>
+<!--<iframe src="https://maps.google.com/maps?q=-173.4,-17&hl=es;z=14&amp;output=embed" width="400" height="300" frameborder="0" style="border:0;" allowfullscreen="" aria-hidden="false" tabindex="0"></iframe>-->
+</body>
+<script>
+  var main_div = document.getElementById("main_div")
+  function autocomplete(inp, url) {
+    /*the autocomplete function takes two arguments,
+    the text field element and an array of possible autocompleted values:*/
+    var currentFocus;
+    /*execute a function when someone writes in the text field:*/
+    inp.addEventListener("input", function(e) {
+      var a, b, i, val = this.value;
+      /*close any already open lists of autocompleted values*/
+      closeAllLists();
+      if (!val) { return false;}
+      currentFocus = -1;
+      /*create a DIV element that will contain the items (values):*/
+      a = document.createElement("DIV");
+      a.setAttribute("id", this.id + "autocomplete-list");
+      a.setAttribute("class", "autocomplete-items");
+      /*append the DIV element as a child of the autocomplete container:*/
+      this.parentNode.appendChild(a);
+      let final_url = url+$("#cname").val();
+      $.ajax({
+        url: final_url,
+        success: function(result){
+          for (i = 0; i < result.length; i++) {
+            /*check if the item starts with the same letters as the text field value:*/
+            /*create a DIV element for each matching element:*/
+            b = document.createElement("DIV");
+            /*make the matching letters bold:*/
+            b.innerHTML = "<strong>" + result[i].name + "</strong>";
+            // b.innerHTML += result[i].name.substr(val.length);
+            /*insert a input field that will hold the current array item's value:*/
+            b.innerHTML += "<input type='hidden' value='" + result[i].name + "'>";
+            /*execute a function when someone clicks on the item value (DIV element):*/
+            let buffer = result[i]
+            b.addEventListener("click", function(e) {
+              main_div.innerHTML = ""
+              /*insert the value for the autocomplete text field:*/
+              inp.value = this.getElementsByTagName("input")[0].value;
+              var div0 = document.createElement("DIV");
+              div0.setAttribute("class", "container")
+              div0.setAttribute("style", "background-color: #e7f0f7")
+              fetch_weather(buffer.name)
+              fetch_exchange_rate(buffer.currencies[0].code)
+              let div1 = document.createElement("DIV");
+              let currency_string = ""
+              for(let currency=0; currency< buffer.currencies.length; currency++){
+                currency_string = currency_string+buffer.currencies[currency].name+" "+"("+buffer.currencies[currency].code+" "+buffer.currencies[currency].symbol+") ";
+              }
+              div1.innerHTML = "<label style='width: 150px' for='capital'>Capital</label><input value='"+buffer.capital+"' id='capital' disabled><br>\n" +
+                      "<label style='width: 150px' for='currency'>Currency</label><input  style='width: 500px' value='"+currency_string+"' id='currency' disabled><br>"
+              div0.append(div1);
+              /*close the list of autocompleted values,
+              (or any other open lists of autocompleted values:*/
+              closeAllLists();
+              main_div.append(div0)
+
+            });
+            a.append(b);
+          }
+        }})
+    });
+    /*execute a function presses a key on the keyboard:*/
+    inp.addEventListener("keydown", function(e) {
+      var x = document.getElementById(this.id + "autocomplete-list");
+      if (x) x = x.getElementsByTagName("div");
+      if (e.keyCode == 40) {
+        /*If the arrow DOWN key is pressed,
+        increase the currentFocus variable:*/
+        currentFocus++;
+        /*and and make the current item more visible:*/
+        addActive(x);
+      } else if (e.keyCode == 38) { //up
+        /*If the arrow UP key is pressed,
+        decrease the currentFocus variable:*/
+        currentFocus--;
+        /*and and make the current item more visible:*/
+        addActive(x);
+      } else if (e.keyCode == 13) {
+        /*If the ENTER key is pressed, prevent the form from being submitted,*/
+        e.preventDefault();
+        if (currentFocus > -1) {
+          /*and simulate a click on the "active" item:*/
+          if (x) x[currentFocus].click();
+        }
+      }
+    });
+    function addActive(x) {
+      /*a function to classify an item as "active":*/
+      if (!x) return false;
+      /*start by removing the "active" class on all items:*/
+      removeActive(x);
+      if (currentFocus >= x.length) currentFocus = 0;
+      if (currentFocus < 0) currentFocus = (x.length - 1);
+      /*add class "autocomplete-active":*/
+      x[currentFocus].classList.add("autocomplete-active");
+    }
+    function removeActive(x) {
+      /*a function to remove the "active" class from all autocomplete items:*/
+      for (var i = 0; i < x.length; i++) {
+        x[i].classList.remove("autocomplete-active");
+      }
+    }
+    function fetch_weather(location) {
+      url = "http://api.weatherstack.com/current?access_key=d289bb7e3cd113f87af3f8782cf5ad30&query="+ location
+      $.get(url ,function( data ) {
+        var div0 = document.createElement("DIV");
+        div0.setAttribute("class", "container")
+        div0.setAttribute("style", "background-color: #e7f0f7")
+        let div1 = document.createElement("DIV")
+        div1.innerHTML = "<label style='width: 150px' for='weather'>Weather</label><input value='"+data.current.temperature+"°C  "+data.current.weather_descriptions+
+                "' id='weather' disabled>\n" +
+                "<img width='40' height='40' src='"+data.current.weather_icons+"'>"
+        div0.append(div1)
+        main_div.append(div0)
+      });
+    }
+    function fetch_exchange_rate(currency) {
+      url = "https://v6.exchangerate-api.com/v6/a48d14dcb5f2b2b5d4329920/latest/"+ currency
+      $.get(url ,function( data ) {
+        var div0 = document.createElement("DIV");
+        div0.setAttribute("class", "container")
+        div0.setAttribute("style", "background-color: #e7f0f7")
+        let div1 = document.createElement("DIV")
+        div1.innerHTML = "<label style='width: 150px' for='exchange'>Exchange Rate</label><input value='"+data.conversion_rates.USD+" USD' id='exchange' disabled>"
+        div0.append(div1)
+        main_div.append(div0)
+      });
+    }
+    function closeAllLists(elmnt) {
+      /*close all autocomplete lists in the document,
+      except the one passed as an argument:*/
+      var x = document.getElementsByClassName("autocomplete-items");
+      for (var i = 0; i < x.length; i++) {
+        if (elmnt != x[i] && elmnt != inp) {
+          x[i].parentNode.removeChild(x[i]);
+        }
+      }
+    }
+    /*execute a function when someone clicks in the document:*/
+    document.addEventListener("click", function (e) {
+      closeAllLists(e.target);
+    });
+  }
+</script>
+<script>
+  autocomplete(document.getElementById("cname"), "https://restcountries.eu/rest/v2/name/");
+</script>
+</html>
